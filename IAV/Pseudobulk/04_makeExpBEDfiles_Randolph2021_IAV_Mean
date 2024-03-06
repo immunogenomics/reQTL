@@ -1,0 +1,65 @@
+#!/bin/bash
+#BSUB -J 04_makeExpBEDfiles_Randolph2021_IAV_Mean
+#BSUB -q long
+#BSUB -n 3
+#BSUB -R rusage[mem=6000]
+#BSUB -R 'select[hname!=cn001]' -R 'select[hname!=cn002]' -R 'select[hname!=cn003]' -R 'select[hname!=cn004]' -R 'select[hname!=cn005]'
+#BSUB -o /path_to_directory/Randolph2021_PBMC/logs/04_makeExpBEDfiles_Randolph2021_IAV_Mean-%J.out
+#BSUB -e /path_to_directory/Randolph2021_PBMC/logs/04_makeExpBEDfiles_Randolph2021_IAV_Mean-%J.err
+echo "**** Job start ****"
+date
+
+## Tabix
+module load htslib/1.4.1 
+
+## Script to make BED file from PEER residuals FOR THE MEAN OF INFECTED AND CONTROL 
+
+# 04_makeExpBEDfiles_Randolph2021_AllClean
+# from: 04_makeExpBEDfiles_grch38_sum.sh
+# 
+# Change file paths as needed
+
+mkdir -p /path_to_directory/Randolph2021/PBMC_RNA/Pseudobulk/AllPBMC/MEAN/BED
+
+# BED header
+echo -e "#Chr\tStart\tEnd\tID" > tmp
+
+zcat /path_to_directory/Randolph2021/PBMC_RNA/Pseudobulk/AllPBMC/PeerNorm_Mean_Pseudobulk_residuals_Randolph2021_All.txt.gz | head -n1 | cut -f2- | sed 's/\./-/g' | paste tmp - > header
+
+zcat /path_to_directory/Randolph2021/PBMC_RNA/Pseudobulk/AllPBMC/PeerNorm_Mean_Pseudobulk_residuals_Randolph2021_All.txt.gz | sed -e "1d" | sort -k 1b,1 > tmp01
+
+# Needs to be by chromosome for FastQTL
+for chr in $(seq 1 22);do
+      echo chr$chr ...
+
+      # Get gene TSS
+      sed -e "1d" /data/srlab/kishigaki/reference/cellranger_gtf/v1/chr${chr}_tss_gene_basic.bed |
+	awk -v chr=$chr '{if($1==chr){print $2,chr,$4 -1,$4}}' |
+      awk '{ $1 = substr($1, 1, 15)} 1' |
+      sort -k 1b,1 > tmp02
+
+      outfile="/path_to_directory/Randolph2021/PBMC_RNA/Pseudobulk/AllPBMC/MEAN/BED/PeerNorm_Mean_Pseudobulk_residuals_Randolph2021_chr${chr}_input.bed"
+      # Link ENSG to gene name
+      zcat /path_to_directory/features.tsv.gz |
+      grep ^ENSG |
+      sort -k 1b,1 |
+      join - tmp02 |
+      awk '{print $2,$5,$6,$7,$2}' |
+      sort -k 1b,1 |
+      uniq -f 4 |
+      join  - tmp01 |
+      cut -d " " -f2- |
+      sort -k 2,2n |
+      perl -pe "s/ /\t/g" |
+      #awk '{print "chr"$0}' |
+      awk '{print $0}' |
+      cat header - > "$outfile"
+
+      bgzip -f "$outfile"
+
+      tabix -f -p bed "$outfile.gz"
+done
+
+
+echo "**** Job ends ****"
+date

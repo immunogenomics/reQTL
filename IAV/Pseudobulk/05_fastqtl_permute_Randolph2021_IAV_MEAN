@@ -1,0 +1,44 @@
+#!/bin/bash
+#BSUB -J 05_fastqtl_permute_Randolph2021_IAV_MEAN[1-22]
+#BSUB -q normal
+#BSUB -We 60
+#BSUB -R rusage[mem=5000]
+#BSUB -R 'select[hname!=cn001]' -R 'select[hname!=cn002]' -R 'select[hname!=cn003]' -R 'select[hname!=cn004]' -R 'select[hname!=cn005]'
+#BSUB -o /path_to_directory/Randolph2021_PBMC/logs/05_fastqtl_permute_Randolph2021_IAV_MEAN-%J-%I.out
+#BSUB -e /path_to_directory/Randolph2021_PBMC/logs/05_fastqtl_permute_Randolph2021_IAV_MEAN-%J-%I.err
+echo "**** Job start ****"
+date
+
+# Script to run FastQTL (Ongen 2015, Bioinformatics): https://academic.oup.com/bioinformatics/article/32/10/1479/1742545
+
+## HOW TO RUN:
+# bsub < 05_fastqtl_permute_Randolph2021_MEAN_ALL.sh
+
+# VCF: post QC and imputation genotype VCF
+# BED: output from previous script
+# Region: leave as chr$chr (and provide as argument when running script)
+# permute: number of permutations
+# out: output file
+
+## INDEX VARIABLE=Chromosome number
+chr=$LSB_JOBINDEX
+
+## DIRECTORY FOR OUTPUTS 
+mkdir -p /path_to_directory/Randolph2021/MeanALL/fastqtl_permute/chr$chr
+
+## INPUT VCF 
+VCF=/path_to_directory/Randolph2021/AllPBMC/Randolph2021_All_mis0.01_maf5_hwe.vcf.gz
+
+## FASTQTL 'permute'
+/path_to_directory/fastqtl/FastQTL/bin/fastQTL.static \
+   --vcf  $VCF \
+   --bed  /path_to_directory/Randolph2021/PBMC_RNA/Pseudobulk/AllPBMC/MEAN/BED/PeerNorm_Mean_Pseudobulk_residuals_Randolph2021_chr${chr}_input.bed.gz   \
+   --region  $chr \
+   --permute 1000 \
+   --out  /path_to_directory/Randolph2021/MeanALL/fastqtl_permute/chr$chr/Randolph2021_MEAN_grch38SA_K15_chr${chr}.permute.txt
+
+gzip -f /path_to_directory/Randolph2021/MeanALL/fastqtl_permute/chr$chr/Randolph2021_MEAN_grch38SA_K15_chr${chr}.permute.txt
+
+
+echo "**** Job ends ****"
+date
