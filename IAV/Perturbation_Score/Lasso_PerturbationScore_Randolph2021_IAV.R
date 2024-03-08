@@ -58,6 +58,7 @@ meta.data <- meta.data[meta.data$SOC_indiv_ID != "HMN52545",]
 
 ## Select columns or variables: Top 20 Harmony PCs and Perturbation condition (NP, P)
 vars <- c(colnames(meta.data)[grep('harmonize',colnames(meta.data) )],'SOC_infection_status' )
+vars <- vars[-grep('UMAP',vars)]
 
 ## SELECT VARS AND ALL CELLS 
 lda.set <- meta.data[,vars]
